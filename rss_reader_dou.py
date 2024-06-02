@@ -37,7 +37,7 @@ def rss_parser(
         Link: https://some.rss.com
     """
     channel_tag_list = ['title', 'link', 'lastBuildDate', 'pubDate', 'language',
-                        'category', 'managinEditor', 'description', ]
+                        'category', 'managinEditor', 'description']
     item_tag_list = ['title', 'author', 'pubDate', 'link', 'category', 'description']
 
     def parse_formatter(xml: str, limit) -> list:
@@ -45,7 +45,7 @@ def rss_parser(
         result = []
         channel_count = 0
 
-        for channel in xml_root.findall('channel'):  # Correctly find channels
+        for channel in xml_root.findall('channel'):
             if channel_count == limit:
                 break
             channel_dict = {tag.tag: tag.text for tag in channel if tag.tag in channel_tag_list}
@@ -91,15 +91,12 @@ def rss_parser(
 
     def json_output(result: list) -> List[str]:
         if len(result) == 1:
-            json_string = json_file.dumps(result[0], indent=2)
+            json_string = json_file.dumps(result[0], indent=2, ensure_ascii=False)
         else:
-            json_string = json_file.dumps(result, indent=2)
+            json_string = json_file.dumps(result, indent=2, ensure_ascii=False)
 
         json_array = json_string.splitlines()
         return json_array
-
-
-
 
     parsed_result = parse_formatter(xml, limit)
 
@@ -126,7 +123,13 @@ def main(argv: Optional[Sequence] = None):
     )
 
     args = parser.parse_args(argv)
-    xml = requests.get(args.source).text
+
+    # Set up headers to mimic a browser request
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    }
+
+    xml = requests.get(args.source, headers=headers).text
     try:
         print("\n".join(rss_parser(xml, args.limit, args.json)))
         return 0
