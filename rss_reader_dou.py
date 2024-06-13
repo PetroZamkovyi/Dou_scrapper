@@ -4,15 +4,10 @@ import json
 from typing import List, Dict
 import os
 from datetime import datetime
-import re
 
 # Constants
-RSS_FEED_URLS = [
-    'https://jobs.dou.ua/vacancies/feeds/?exp=0-1&category=Golang',
-    'https://jobs.dou.ua/vacancies/feeds/?exp=1-3&category=Golang',
-    'https://jobs.dou.ua/vacancies/feeds/?exp=3-5&category=Golang',
-    'https://jobs.dou.ua/vacancies/feeds/?exp=5plus&category=Golang'
-]
+CATEGORIES = ['Golang']
+EXPERIENCE_LEVELS = ['0-1', '1-3', '3-5', '5plus']
 HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
 }
@@ -34,17 +29,11 @@ def clean_text(text: str) -> str:
     return text.replace('\xa0', ' ').strip()
 
 
-def extract_experience_from_url(url: str) -> str:
-    match = re.search(r'exp=(\d+-\d+|\d+plus)', url)
-    if match:
-        return match.group(1)
-    return 'unknown'
-
-
-def extract_rss_items(root: ET.Element, experience: str) -> List[Dict[str, str]]:
+def extract_rss_items(root: ET.Element, experience: str, category: str) -> List[Dict[str, str]]:
     rss_items = []
     for item in root.findall('./channel/item'):
         rss_items.append({
+            'category': category,
             'title': item.find('title').text,
             'link': item.find('link').text,
             'experience': experience,
@@ -76,14 +65,15 @@ def main():
         os.makedirs(OUTPUT_DIR)
 
     all_rss_items = []
-    for url in RSS_FEED_URLS:
-        try:
-            root = fetch_rss_feed(url, HEADERS)
-            experience = extract_experience_from_url(url)
-            rss_items = extract_rss_items(root, experience)
-            all_rss_items.extend(rss_items)
-        except Exception as e:
-            print(f"An error occurred while processing {url}: {e}")
+    for category in CATEGORIES:
+        for experience in EXPERIENCE_LEVELS:
+            url = f'https://jobs.dou.ua/vacancies/feeds/?exp={experience}&category={category}'
+            try:
+                root = fetch_rss_feed(url, HEADERS)
+                rss_items = extract_rss_items(root, experience, category)
+                all_rss_items.extend(rss_items)
+            except Exception as e:
+                print(f"An error occurred while processing {url}: {e}")
 
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M")
     output_file = os.path.join(OUTPUT_DIR, f'{timestamp} rss_feed.json')
