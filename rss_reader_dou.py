@@ -4,6 +4,7 @@ import json
 from typing import List, Dict
 import os
 from datetime import datetime
+import re
 
 # Constants
 RSS_FEED_URLS = [
@@ -16,7 +17,7 @@ HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
 }
 OUTPUT_DIR = 'extracted_data'
-CUMULATIVE_FILE = os.path.join(OUTPUT_DIR, 'cumulative.json')
+CUMULATIVE_FILE = os.path.join(OUTPUT_DIR, 'cumulative_rss_feed.json')
 
 
 def fetch_rss_feed(url: str, headers: Dict[str, str]) -> ET.Element:
@@ -33,12 +34,20 @@ def clean_text(text: str) -> str:
     return text.replace('\xa0', ' ').strip()
 
 
-def extract_rss_items(root: ET.Element) -> List[Dict[str, str]]:
+def extract_experience_from_url(url: str) -> str:
+    match = re.search(r'exp=(\d+-\d+|\d+plus)', url)
+    if match:
+        return match.group(1)
+    return 'unknown'
+
+
+def extract_rss_items(root: ET.Element, experience: str) -> List[Dict[str, str]]:
     rss_items = []
     for item in root.findall('./channel/item'):
         rss_items.append({
             'title': item.find('title').text,
             'link': item.find('link').text,
+            'experience': experience,
             'description': clean_text(item.find('description').text),
             'pub_date': item.find('pubDate').text,
             'guid': item.find('guid').text
@@ -70,12 +79,13 @@ def main():
     for url in RSS_FEED_URLS:
         try:
             root = fetch_rss_feed(url, HEADERS)
-            rss_items = extract_rss_items(root)
+            experience = extract_experience_from_url(url)
+            rss_items = extract_rss_items(root, experience)
             all_rss_items.extend(rss_items)
         except Exception as e:
             print(f"An error occurred while processing {url}: {e}")
 
-    timestamp = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M")
     output_file = os.path.join(OUTPUT_DIR, f'{timestamp} rss_feed.json')
     save_to_json(all_rss_items, output_file)
     update_cumulative_file(all_rss_items, CUMULATIVE_FILE)
