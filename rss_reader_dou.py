@@ -32,14 +32,18 @@ def clean_text(text: str) -> str:
 def extract_rss_items(root: ET.Element, experience: str, category: str) -> List[Dict[str, str]]:
     rss_items = []
     for item in root.findall('./channel/item'):
+        pub_date_str = item.find('pubDate').text
+        pub_date = datetime.strptime(pub_date_str, '%a, %d %b %Y %H:%M:%S %z')
+
         rss_items.append({
             'category': category,
+            'experience': experience,
             'title': item.find('title').text,
             'link': item.find('link').text,
-            'experience': experience,
             'description': clean_text(item.find('description').text),
-            'pub_date': item.find('pubDate').text,
-            'guid': item.find('guid').text
+            'pub_date': pub_date_str,
+            'guid': item.find('guid').text,
+            'pub_date_obj': pub_date  # Add datetime object for sorting
         })
     return rss_items
 
@@ -49,14 +53,21 @@ def save_to_json(data: List[Dict[str, str]], filename: str):
         json.dump(data, json_file, indent=4, ensure_ascii=False)
 
 
-def update_cumulative_file(new_data: List[Dict[str, str]], cumulative_file: str):
+def load_cumulative_data(cumulative_file: str) -> List[Dict[str, str]]:
     if os.path.exists(cumulative_file):
         with open(cumulative_file, 'r', encoding='utf-8') as file:
-            cumulative_data = json.load(file)
-    else:
-        cumulative_data = []
+            return json.load(file)
+    return []
 
-    cumulative_data.extend(new_data)
+
+def update_cumulative_file(new_data: List[Dict[str, str]], cumulative_file: str):
+    cumulative_data = load_cumulative_data(cumulative_file)
+    cumulative_guids = {entry['guid'] for entry in cumulative_data}
+
+    filtered_new_data = [entry for entry in new_data if entry['guid'] not in cumulative_guids]
+
+    cumulative_data.extend(filtered_new_data)
+    cumulative_data.sort(key=lambda x: datetime.strptime(x['pub_date'], '%a, %d %b %Y %H:%M:%S %z'))
     save_to_json(cumulative_data, cumulative_file)
 
 
@@ -74,6 +85,10 @@ def main():
                 all_rss_items.extend(rss_items)
             except Exception as e:
                 print(f"An error occurred while processing {url}: {e}")
+
+    all_rss_items.sort(key=lambda x: x['pub_date_obj'])
+    for item in all_rss_items:
+        del item['pub_date_obj']  # Remove datetime object before saving to JSON
 
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M")
     output_file = os.path.join(OUTPUT_DIR, f'{timestamp} rss_feed.json')
