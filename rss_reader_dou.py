@@ -71,14 +71,22 @@ def update_cumulative_file(new_data: List[Dict[str, str]], cumulative_file: str)
     save_to_json(cumulative_data, cumulative_file)
 
 
+def create_output_directory(directory: str):
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+
+def generate_feed_url(category: str, experience: str) -> str:
+    return f'https://jobs.dou.ua/vacancies/feeds/?exp={experience}&category={category}'
+
+
 def main():
-    if not os.path.exists(OUTPUT_DIR):
-        os.makedirs(OUTPUT_DIR)
+    create_output_directory(OUTPUT_DIR)
 
     all_rss_items = []
     for category in CATEGORIES:
         for experience in EXPERIENCE_LEVELS:
-            url = f'https://jobs.dou.ua/vacancies/feeds/?exp={experience}&category={category}'
+            url = generate_feed_url(category, experience)
             try:
                 root = fetch_rss_feed(url, HEADERS)
                 rss_items = extract_rss_items(root, experience, category)
