@@ -12,7 +12,7 @@ HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
 }
 OUTPUT_DIR = 'extracted_data'
-CUMULATIVE_FILE = os.path.join(OUTPUT_DIR, 'cumulative_rss_feed.json')
+CUMULATIVE_FILE = os.path.join(OUTPUT_DIR, 'sorted cumulative_rss_feed.json')
 
 
 def fetch_rss_feed(url: str, headers: Dict[str, str]) -> ET.Element:
@@ -106,3 +106,14 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+'''
+Updates.
+include the expire date (when the item is not available anymore
+note that some vacations could have identical name (expire in one month)
+like
+Software Engineer (PHP/Go) в WhiteBIT, за кордоном, віддалено
+
+Add other categories
+
+'''
